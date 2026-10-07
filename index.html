@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCM AI - Trợ lý PC</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f6fa;color:#172033}
+.header{background:#1f5da8;color:white;padding:18px 22px;font-size:22px;font-weight:700}
+.container{max-width:1050px;margin:24px auto;padding:0 16px;display:grid;grid-template-columns:280px 1fr;gap:18px}
+.card{background:white;border:1px solid #dfe5ed;border-radius:14px;padding:16px;box-shadow:0 4px 16px #0000000a}
+h2{margin:0 0 12px;font-size:17px}
+label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+select,input,button{width:100%;padding:11px;border:1px solid #ccd5e1;border-radius:9px;font-size:14px}
+button{background:#1f5da8;color:white;border:0;font-weight:700;cursor:pointer}
+button:hover{opacity:.92}
+#chat{height:430px;overflow:auto;padding:4px}
+.msg{max-width:82%;padding:11px 13px;border-radius:12px;margin:9px 0;white-space:pre-wrap;line-height:1.5}
+.user{margin-left:auto;background:#e6f0ff}
+.ai{background:#f0f3f7}
+.row{display:flex;gap:8px;margin-top:10px}
+.row input{flex:1}
+.row button{width:90px}
+.status{font-size:12px;color:#657386;margin-top:8px}
+.clear{margin-top:8px;background:#eef2f6;color:#334155}
+@media(max-width:750px){.container{grid-template-columns:1fr}.msg{max-width:94%}}
+</style>
+</head>
+<body>
+<div class="header">🤖 MCM AI — Trợ lý tư vấn PC</div>
+
+<div class="container">
+  <aside class="card">
+    <h2>⚙️ Cấu hình PC</h2>
+
+    <label>CPU</label>
+    <select id="cpu">
+      <option value="">-- Chọn CPU --</option>
+      <option>Ryzen 5 5500</option>
+      <option>Ryzen 5 5600</option>
+      <option>Core i3-12100F</option>
+      <option>Core i5-12400F</option>
+      <option>Core i5-14400F</option>
+    </select>
+
+    <label>Mainboard</label>
+    <select id="main">
+      <option value="">-- Chọn main --</option>
+      <option>H610M</option>
+      <option>B660M</option>
+      <option>B760M</option>
+      <option>B450M</option>
+      <option>B550M</option>
+      <option>A620M</option>
+    </select>
+
+    <label>VGA</label>
+    <select id="gpu">
+      <option value="">-- Chọn VGA --</option>
+      <option>RX 580 8GB</option>
+      <option>RX 6600 8GB</option>
+      <option>RTX 3050 6GB</option>
+      <option>RTX 4060 8GB</option>
+    </select>
+
+    <label>RAM</label>
+    <select id="ram">
+      <option value="">-- Chọn RAM --</option>
+      <option>8GB DDR4</option>
+      <option>16GB DDR4</option>
+      <option>32GB DDR4</option>
+      <option>16GB DDR5</option>
+    </select>
+
+    <label>SSD</label>
+    <select id="ssd">
+      <option value="">-- Chọn SSD --</option>
+      <option>NVMe 256GB</option>
+      <option>NVMe 500GB</option>
+      <option>NVMe 1TB</option>
+    </select>
+
+    <label>PSU</label>
+    <select id="psu">
+      <option value="">-- Chọn nguồn --</option>
+      <option>500W</option>
+      <option>650W</option>
+      <option>750W</option>
+    </select>
+
+    <button onclick="analyze()">🔎 Đánh giá cấu hình</button>
+    <button class="clear" onclick="clearChat()">Xóa cuộc trò chuyện</button>
+  </aside>
+
+  <main class="card">
+    <h2>💬 Chat với AI</h2>
+    <div id="chat">
+      <div class="msg ai">Xin chào! Tôi có thể tư vấn CPU, mainboard, VGA, RAM, SSD, PSU và đánh giá cấu hình PC.</div>
+    </div>
+
+    <div class="row">
+      <input id="message" placeholder="Ví dụ: Tầm 15 triệu build PC chơi Valorant..." onkeydown="if(event.key==='Enter') sendMessage()">
+      <button onclick="sendMessage()">Gửi</button>
+    </div>
+    <div class="status" id="status">Sẵn sàng</div>
+  </main>
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const statusEl = document.getElementById("status");
+
+function addMessage(text, type){
+  const div = document.createElement("div");
+  div.className = "msg " + type;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function getBuild(){
+  return {
+    cpu: document.getElementById("cpu").value,
+    main: document.getElementById("main").value,
+    gpu: document.getElementById("gpu").value,
+    ram: document.getElementById("ram").value,
+    ssd: document.getElementById("ssd").value,
+    psu: document.getElementById("psu").value
+  };
+}
+
+async function sendMessage(customMessage){
+  const input = document.getElementById("message");
+  const message = customMessage || input.value.trim();
+  if(!message) return;
+
+  addMessage(message, "user");
+  input.value = "";
+  statusEl.textContent = "AI đang suy nghĩ...";
+
+  try{
+    const res = await fetch("/api/chat", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        message,
+        build:getBuild()
+      })
+    });
+
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.error || "Không thể kết nối AI.");
+
+    addMessage(data.reply, "ai");
+    statusEl.textContent = "Sẵn sàng";
+  }catch(err){
+    addMessage("❌ " + err.message, "ai");
+    statusEl.textContent = "Có lỗi";
+  }
+}
+
+function analyze(){
+  const b = getBuild();
+  const selected = Object.values(b).filter(Boolean).length;
+  if(!selected){
+    sendMessage("Hãy hướng dẫn tôi chọn cấu hình PC phù hợp.");
+    return;
+  }
+
+  sendMessage(
+    "Hãy đánh giá cấu hình PC sau. Kiểm tra tính tương thích, điểm yếu, nguồn điện và đề xuất nâng cấp nếu cần:\n" +
+    JSON.stringify(b, null, 2)
+  );
+}
+
+function clearChat(){
+  chat.innerHTML = '<div class="msg ai">Đã xóa. Bạn muốn tư vấn cấu hình nào?</div>';
+  statusEl.textContent = "Sẵn sàng";
+}
+</script>
+</body>
+</html>
