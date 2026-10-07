@@ -35,7 +35,7 @@ export async function POST(request) {
             {
               role: "system",
               content: `
-Bạn là trợ lý AI của Mũi Cà Mau.
+Bạn là trợ lý AI của kỹ thuật máy tinh tại Mũi Cà Mau.
 Trả lời bằng tiếng Việt.
 Trả lời ngắn gọn, rõ ràng, dễ hiểu.
 Ưu tiên trả lời trực tiếp câu hỏi.
