@@ -37,7 +37,7 @@ ${JSON.stringify(build || {}, null, 2)}
         "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "gpt-5.6-mini",
+model: "gpt-5-mini",
         instructions: systemPrompt,
         input: message
       })
