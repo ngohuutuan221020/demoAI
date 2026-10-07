@@ -3,62 +3,100 @@ export async function POST(request) {
     const { message, build } = await request.json();
 
     if (!message) {
-      return Response.json({ error: "Thiếu nội dung câu hỏi." }, { status: 400 });
+      return Response.json(
+        { error: "Thiếu nội dung câu hỏi." },
+        { status: 400 }
+      );
     }
 
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.GEMINI_API_KEY) {
       return Response.json(
-        { error: "Chưa cấu hình OPENAI_API_KEY trên Vercel." },
+        { error: "Chưa cấu hình GEMINI_API_KEY trên Vercel." },
         { status: 500 }
       );
     }
 
     const systemPrompt = `
 Bạn là trợ lý kỹ thuật PC của Mũi Cà Mau.
-Trả lời bằng tiếng Việt, ngắn gọn, dễ hiểu và thực tế.
-Chuyên tư vấn CPU, mainboard, VGA, RAM, SSD, PSU, case, tản nhiệt và cấu hình gaming.
-Khi đánh giá cấu hình, hãy kiểm tra:
-1. Tương thích CPU/mainboard.
-2. RAM và nền tảng DDR4/DDR5.
-3. Mức độ cân bằng CPU/GPU.
-4. Công suất PSU và độ an toàn.
-5. Điểm nghẽn hiệu năng nếu có.
-6. Khả năng nâng cấp.
-Không được tự bịa giá sản phẩm nếu người dùng chưa cung cấp giá.
 
-Dữ liệu cấu hình người dùng hiện chọn:
+Nhiệm vụ:
+- Tư vấn CPU, mainboard, VGA, RAM, SSD, PSU, case và tản nhiệt.
+- Kiểm tra khả năng tương thích linh kiện.
+- Đánh giá sự cân bằng của cấu hình.
+- Kiểm tra nguồn có phù hợp hay không.
+- Phân tích khả năng nâng cấp.
+- Tư vấn PC gaming theo ngân sách.
+- Trả lời bằng tiếng Việt, dễ hiểu và thực tế.
+
+Không tự bịa giá sản phẩm nếu người dùng chưa cung cấp giá.
+
+Cấu hình người dùng đang chọn:
 ${JSON.stringify(build || {}, null, 2)}
 `;
 
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
-      body: JSON.stringify({
-model: "gpt-5-mini",
-        instructions: systemPrompt,
-        input: message
-      })
-    });
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [
+              {
+                text: systemPrompt
+              }
+            ]
+          },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: message
+                }
+              ]
+            }
+          ]
+        })
+      }
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
       return Response.json(
-        { error: data?.error?.message || "OpenAI API trả về lỗi." },
-        { status: response.status }
+        {
+          error:
+            data?.error?.message ||
+            "Gemini API trả về lỗi."
+        },
+        {
+          status: response.status
+        }
       );
     }
 
+    const reply =
+      data?.candidates?.[0]?.content?.parts
+        ?.map(part => part.text || "")
+        .join("") ||
+      "Gemini không trả về nội dung.";
+
     return Response.json({
-      reply: data.output_text || "AI không trả về nội dung."
+      reply
     });
+
   } catch (error) {
     return Response.json(
-      { error: error.message || "Lỗi máy chủ." },
-      { status: 500 }
+      {
+        error: error.message || "Lỗi máy chủ."
+      },
+      {
+        status: 500
+      }
     );
   }
 }
