@@ -47,7 +47,7 @@ Nếu người dùng hỏi về PC, hãy tư vấn chính xác và thực tế.
           ],
 
           temperature: 0.5,
-          max_completion_tokens: 800
+          max_completion_tokens: 2000
         })
       }
     );
