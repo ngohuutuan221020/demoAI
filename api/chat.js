@@ -5,7 +5,7 @@ export async function POST(request) {
     if (!messages || !Array.isArray(messages)) {
       return Response.json(
         { error: "Thiếu lịch sử trò chuyện." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -14,7 +14,7 @@ export async function POST(request) {
     if (!apiKey) {
       return Response.json(
         { error: "Chưa cấu hình GROQ_API_KEY." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -25,7 +25,7 @@ export async function POST(request) {
 
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`
+          Authorization: `Bearer ${apiKey}`,
         },
 
         body: JSON.stringify({
@@ -40,16 +40,16 @@ Trả lời bằng tiếng Việt.
 Trả lời ngắn gọn, rõ ràng, dễ hiểu.
 Ưu tiên trả lời trực tiếp câu hỏi.
 Nếu người dùng hỏi về PC, hãy tư vấn chính xác và thực tế.
-              `.trim()
+              `.trim(),
             },
 
-            ...messages
+            ...messages,
           ],
 
           temperature: 0.5,
-          max_completion_tokens: 2000
-        })
-      }
+          max_completion_tokens: 2000,
+        }),
+      },
     );
 
     const data = await response.json();
@@ -57,36 +57,32 @@ Nếu người dùng hỏi về PC, hãy tư vấn chính xác và thực tế.
     if (!response.ok) {
       return Response.json(
         {
-          error:
-            data?.error?.message ||
-            "Groq API trả về lỗi."
+          error: data?.error?.message || "Groq API trả về lỗi.",
         },
         {
-          status: response.status
-        }
+          status: response.status,
+        },
       );
     }
 
-    const reply =
-      data?.choices?.[0]?.message?.content;
+    const reply = data?.choices?.[0]?.message?.content;
 
     if (!reply) {
       return Response.json(
         { error: "AI không trả về nội dung." },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     return Response.json({ reply });
-
   } catch (error) {
     return Response.json(
       {
-        error: error.message || "Lỗi máy chủ."
+        error: error.message || "Lỗi máy chủ.",
       },
       {
-        status: 500
-      }
+        status: 500,
+      },
     );
   }
 }
