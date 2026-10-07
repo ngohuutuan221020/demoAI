@@ -9,7 +9,9 @@ export async function POST(request) {
       );
     }
 
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
       return Response.json(
         { error: "Chưa cấu hình GEMINI_API_KEY trên Vercel." },
         { status: 500 }
@@ -19,52 +21,63 @@ export async function POST(request) {
     const systemPrompt = `
 Bạn là trợ lý kỹ thuật PC của Mũi Cà Mau.
 
-Nhiệm vụ:
-- Tư vấn CPU, mainboard, VGA, RAM, SSD, PSU, case và tản nhiệt.
-- Kiểm tra khả năng tương thích linh kiện.
-- Đánh giá sự cân bằng của cấu hình.
-- Kiểm tra nguồn có phù hợp hay không.
-- Phân tích khả năng nâng cấp.
-- Tư vấn PC gaming theo ngân sách.
-- Trả lời bằng tiếng Việt, dễ hiểu và thực tế.
+Bạn chuyên:
+- CPU
+- Mainboard
+- VGA
+- RAM
+- SSD
+- PSU
+- Case
+- Tản nhiệt
+- Tư vấn PC Gaming
+- Kiểm tra tương thích linh kiện
+- Đánh giá cấu hình
+- Tư vấn nâng cấp
 
-Không tự bịa giá sản phẩm nếu người dùng chưa cung cấp giá.
+Khi đánh giá cấu hình:
+1. Kiểm tra CPU và Mainboard có tương thích không.
+2. Kiểm tra DDR4 / DDR5.
+3. Đánh giá CPU và GPU có cân bằng không.
+4. Kiểm tra công suất PSU.
+5. Tìm điểm nghẽn hiệu năng.
+6. Đề xuất nâng cấp nếu cần.
 
-Cấu hình người dùng đang chọn:
+Trả lời bằng tiếng Việt.
+Trả lời rõ ràng, thực tế, dễ hiểu.
+Không tự bịa giá nếu người dùng chưa cung cấp giá.
+
+Cấu hình hiện tại của khách:
 ${JSON.stringify(build || {}, null, 2)}
 `;
 
+    const input = `
+${systemPrompt}
+
+Câu hỏi của khách:
+${message}
+`;
+
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
+      "https://generativelanguage.googleapis.com/v1beta/interactions",
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": process.env.GEMINI_API_KEY
+          "x-goog-api-key": apiKey
         },
+
         body: JSON.stringify({
-          systemInstruction: {
-            parts: [
-              {
-                text: systemPrompt
-              }
-            ]
-          },
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  text: message
-                }
-              ]
-            }
-          ]
+          model: "gemini-3.8-flash",
+          input: input
         })
       }
     );
 
     const data = await response.json();
+
+    console.log("Gemini response:", JSON.stringify(data));
 
     if (!response.ok) {
       return Response.json(
@@ -79,17 +92,26 @@ ${JSON.stringify(build || {}, null, 2)}
       );
     }
 
-    const reply =
-      data?.candidates?.[0]?.content?.parts
-        ?.map(part => part.text || "")
-        .join("") ||
-      "Gemini không trả về nội dung.";
+    const reply = data?.output_text;
+
+    if (!reply) {
+      return Response.json(
+        {
+          error: "Gemini không trả về output_text."
+        },
+        {
+          status: 500
+        }
+      );
+    }
 
     return Response.json({
-      reply
+      reply: reply
     });
 
   } catch (error) {
+    console.error("Gemini error:", error);
+
     return Response.json(
       {
         error: error.message || "Lỗi máy chủ."
