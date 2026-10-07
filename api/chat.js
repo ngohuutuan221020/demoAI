@@ -9,11 +9,11 @@ export async function POST(request) {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GROQ_API_KEY;
 
     if (!apiKey) {
       return Response.json(
-        { error: "Chưa cấu hình GEMINI_API_KEY trên Vercel." },
+        { error: "Chưa cấu hình GROQ_API_KEY trên Vercel." },
         { status: 500 }
       );
     }
@@ -21,7 +21,7 @@ export async function POST(request) {
     const systemPrompt = `
 Bạn là trợ lý kỹ thuật PC của Mũi Cà Mau.
 
-Bạn chuyên:
+Bạn chuyên tư vấn:
 - CPU
 - Mainboard
 - VGA
@@ -30,61 +30,66 @@ Bạn chuyên:
 - PSU
 - Case
 - Tản nhiệt
-- Tư vấn PC Gaming
-- Kiểm tra tương thích linh kiện
-- Đánh giá cấu hình
-- Tư vấn nâng cấp
+- PC Gaming
+- Tương thích linh kiện
+- Nâng cấp máy tính
 
 Khi đánh giá cấu hình:
 1. Kiểm tra CPU và Mainboard có tương thích không.
 2. Kiểm tra DDR4 / DDR5.
-3. Đánh giá CPU và GPU có cân bằng không.
+3. Đánh giá sự cân bằng CPU và GPU.
 4. Kiểm tra công suất PSU.
-5. Tìm điểm nghẽn hiệu năng.
+5. Phát hiện điểm nghẽn.
 6. Đề xuất nâng cấp nếu cần.
 
 Trả lời bằng tiếng Việt.
-Trả lời rõ ràng, thực tế, dễ hiểu.
-Không tự bịa giá nếu người dùng chưa cung cấp giá.
+Ngắn gọn, chính xác và dễ hiểu.
+Không tự bịa giá sản phẩm.
 
-Cấu hình hiện tại của khách:
+Cấu hình khách đang chọn:
 ${JSON.stringify(build || {}, null, 2)}
 `;
 
-    const input = `
-${systemPrompt}
-
-Câu hỏi của khách:
-${message}
-`;
-
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/interactions",
+      "https://api.groq.com/openai/v1/chat/completions",
       {
         method: "POST",
 
         headers: {
           "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
+          "Authorization": `Bearer ${apiKey}`
         },
 
         body: JSON.stringify({
-          model: "gemini-3.8-flash",
-          input: input
+          model: "openai/gpt-oss-120b",
+
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt
+            },
+            {
+              role: "user",
+              content: message
+            }
+          ],
+
+          temperature: 0.7,
+          max_completion_tokens: 2048
         })
       }
     );
 
     const data = await response.json();
 
-    console.log("Gemini response:", JSON.stringify(data));
+    console.log("Groq response:", JSON.stringify(data));
 
     if (!response.ok) {
       return Response.json(
         {
           error:
             data?.error?.message ||
-            "Gemini API trả về lỗi."
+            "Groq API trả về lỗi."
         },
         {
           status: response.status
@@ -92,12 +97,13 @@ ${message}
       );
     }
 
-    const reply = data?.output_text;
+    const reply =
+      data?.choices?.[0]?.message?.content;
 
     if (!reply) {
       return Response.json(
         {
-          error: "Gemini không trả về output_text."
+          error: "Groq không trả về nội dung."
         },
         {
           status: 500
@@ -106,11 +112,11 @@ ${message}
     }
 
     return Response.json({
-      reply: reply
+      reply
     });
 
   } catch (error) {
-    console.error("Gemini error:", error);
+    console.error("Groq error:", error);
 
     return Response.json(
       {
