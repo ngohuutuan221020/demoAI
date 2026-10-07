@@ -1,10 +1,10 @@
 export async function POST(request) {
   try {
-    const { message, build } = await request.json();
+    const { messages } = await request.json();
 
-    if (!message) {
+    if (!messages || !Array.isArray(messages)) {
       return Response.json(
-        { error: "Thiếu nội dung câu hỏi." },
+        { error: "Thiếu lịch sử trò chuyện." },
         { status: 400 }
       );
     }
@@ -13,42 +13,10 @@ export async function POST(request) {
 
     if (!apiKey) {
       return Response.json(
-        { error: "Chưa cấu hình GROQ_API_KEY trên Vercel." },
+        { error: "Chưa cấu hình GROQ_API_KEY." },
         { status: 500 }
       );
     }
-
-    const systemPrompt = `
-Bạn là trợ lý kỹ thuật PC của Mũi Cà Mau.
-
-Bạn chuyên tư vấn:
-- CPU
-- Mainboard
-- VGA
-- RAM
-- SSD
-- PSU
-- Case
-- Tản nhiệt
-- PC Gaming
-- Tương thích linh kiện
-- Nâng cấp máy tính
-
-Khi đánh giá cấu hình:
-1. Kiểm tra CPU và Mainboard có tương thích không.
-2. Kiểm tra DDR4 / DDR5.
-3. Đánh giá sự cân bằng CPU và GPU.
-4. Kiểm tra công suất PSU.
-5. Phát hiện điểm nghẽn.
-6. Đề xuất nâng cấp nếu cần.
-
-Trả lời bằng tiếng Việt.
-Ngắn gọn, chính xác và dễ hiểu.
-Không tự bịa giá sản phẩm.
-
-Cấu hình khách đang chọn:
-${JSON.stringify(build || {}, null, 2)}
-`;
 
     const response = await fetch(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -66,23 +34,25 @@ ${JSON.stringify(build || {}, null, 2)}
           messages: [
             {
               role: "system",
-              content: systemPrompt
+              content: `
+Bạn là trợ lý AI của Mũi Cà Mau.
+Trả lời bằng tiếng Việt.
+Trả lời ngắn gọn, rõ ràng, dễ hiểu.
+Ưu tiên trả lời trực tiếp câu hỏi.
+Nếu người dùng hỏi về PC, hãy tư vấn chính xác và thực tế.
+              `.trim()
             },
-            {
-              role: "user",
-              content: message
-            }
+
+            ...messages
           ],
 
-          temperature: 0.7,
-          max_completion_tokens: 2048
+          temperature: 0.5,
+          max_completion_tokens: 800
         })
       }
     );
 
     const data = await response.json();
-
-    console.log("Groq response:", JSON.stringify(data));
 
     if (!response.ok) {
       return Response.json(
@@ -102,22 +72,14 @@ ${JSON.stringify(build || {}, null, 2)}
 
     if (!reply) {
       return Response.json(
-        {
-          error: "Groq không trả về nội dung."
-        },
-        {
-          status: 500
-        }
+        { error: "AI không trả về nội dung." },
+        { status: 500 }
       );
     }
 
-    return Response.json({
-      reply
-    });
+    return Response.json({ reply });
 
   } catch (error) {
-    console.error("Groq error:", error);
-
     return Response.json(
       {
         error: error.message || "Lỗi máy chủ."
